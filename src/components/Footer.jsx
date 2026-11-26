@@ -21,7 +21,6 @@ export default function Footer() {
       </ul>
     </div>
 
-    {/* KANAN: Sosial Media */}
     <div>
       <h3 className="font-semibold text-lg mb-3">Sosial Media</h3>
       <ul className="space-y-2 text-gray-400 text-sm">

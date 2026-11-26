@@ -7,11 +7,11 @@ interface ProdukDetailType {
   id: number;
   nama: string;
   harga: number;
-  ukuran: string;
+  ukuran: string | string[];
   image: string;
   deskripsi?: string;
   stok?: number;
-  images?: string[]; // Tambahan opsional jika database punya banyak gambar
+  images?: string[];
 }
 
 export default function ProductDetail() {
@@ -22,10 +22,9 @@ export default function ProductDetail() {
   const [produk, setProduk] = useState<ProdukDetailType | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedSize, setSelectedSize] = useState<string>("");
-  
-  // State untuk gambar utama dan daftar thumbnail
   const [activeImage, setActiveImage] = useState<string>("");
   const [listGambar, setListGambar] = useState<string[]>([]);
+  const [availableSizes, setAvailableSizes] = useState<string[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -36,29 +35,31 @@ export default function ProductDetail() {
           cache: "no-store",
         });
 
-        if (!res.ok) throw new Error("Gagal memuat data produk dari database");
+        if (!res.ok) throw new Error("Gagal memuat data");
 
         const data = await res.json();
         setProduk(data);
-        
-        // Set gambar utama default
-        if (data?.image) {
-          setActiveImage(data.image);
-        }
 
-        // Jika API menyediakan banyak gambar (array), masukkan ke list. 
-        // Jika tidak, kita duplikat gambar utama supaya 5 kotak thumbnail terisi gambar produk tersebut.
+        if (data?.image) setActiveImage(data.image);
+
         if (data?.images && Array.isArray(data.images) && data.images.length > 0) {
-          setListGambar(data.images);
+          setListGambar(data.images.filter(Boolean));
         } else if (data?.image) {
-          setListGambar([data.image, data.image, data.image, data.image, data.image]);
+          setListGambar([data.image]);
         }
 
         if (data?.ukuran) {
-          setSelectedSize(data.ukuran);
+          const sizesArray = Array.isArray(data.ukuran)
+            ? data.ukuran
+            : typeof data.ukuran === "string"
+            ? data.ukuran.split(",").map((s: string) => s.trim()).filter(Boolean)
+            : [];
+
+          setAvailableSizes(sizesArray);
+          if (sizesArray.length > 0) setSelectedSize(sizesArray[0]);
         }
       } catch (error) {
-        console.error("Error fetching detail produk:", error);
+        console.error("Error:", error);
       } finally {
         setLoading(false);
       }
@@ -70,7 +71,7 @@ export default function ProductDetail() {
   const handleTambahKeKeranjang = () => {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) {
-      alert("Silakan login terlebih dahulu untuk memasukkan produk ke keranjang!");
+      alert("Silakan login terlebih dahulu!");
       router.push("/auth/login");
       return;
     }
@@ -78,7 +79,9 @@ export default function ProductDetail() {
     if (!produk) return;
 
     const keranjangLama = JSON.parse(localStorage.getItem("cart_items") || "[]");
-    const cekAda = keranjangLama.find((item: any) => item.id === produk.id);
+    const cekAda = keranjangLama.find(
+      (item: any) => item.id === produk.id && item.ukuran === selectedSize
+    );
 
     if (!cekAda) {
       const produkBaru = {
@@ -90,9 +93,8 @@ export default function ProductDetail() {
         image: activeImage || produk.image,
         ukuran: selectedSize,
       };
-      
-      const keranjangBaru = [...keranjangLama, produkBaru];
-      localStorage.setItem("cart_items", JSON.stringify(keranjangBaru));
+
+      localStorage.setItem("cart_items", JSON.stringify([...keranjangLama, produkBaru]));
     }
 
     alert("Produk berhasil ditambahkan ke keranjang!");
@@ -102,7 +104,7 @@ export default function ProductDetail() {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) {
       e.preventDefault();
-      alert("Silakan login terlebih dahulu untuk melakukan pembelian!");
+      alert("Silakan login terlebih dahulu!");
       router.push("/auth/login");
     }
   };
@@ -123,8 +125,6 @@ export default function ProductDetail() {
     );
   }
 
-  const availableSizes = ["39", "40", "41", "42", "43"];
-
   return (
     <>
       <style jsx>{`
@@ -134,6 +134,7 @@ export default function ProductDetail() {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           display: flex;
           flex-direction: column;
+
         }
         .status-container {
           display: flex;
@@ -148,7 +149,7 @@ export default function ProductDetail() {
           justify-content: center;
           align-items: flex-start;
           padding: 48px 24px;
-          margin-top: 30px;
+          margin-top: -10px;
         }
         .product-container {
           display: flex;
@@ -181,7 +182,8 @@ export default function ProductDetail() {
           display: flex;
           gap: 12px;
           margin-top: 16px;
-          justify-content: space-between;
+          justify-content: flex-start;
+          flex-wrap: wrap;
         }
         .thumb {
           width: 60px;
@@ -250,12 +252,13 @@ export default function ProductDetail() {
         .size-options {
           display: flex;
           gap: 10px;
+          flex-wrap: wrap;
         }
         .size-box {
           width: 32px;
           height: 32px;
           background-color: #64748b;
-          border-radius: 8px;
+          border-radius: 5px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -263,6 +266,12 @@ export default function ProductDetail() {
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
+          border: 2px solid transparent;
+          transition: all 0.2s;
+        }
+        .size-box.active {
+          background-color: #1d52d8;
+          
         }
         .action-buttons {
           display: flex;
@@ -320,7 +329,6 @@ export default function ProductDetail() {
         <main className="main-content">
           <section className="product-container">
             <div className="product-images">
-              {/* Gambar Utama */}
               <div className="main-image">
                 <img
                   src={`http://localhost/api/uploads/${activeImage || produk.image}`}
@@ -328,7 +336,6 @@ export default function ProductDetail() {
                 />
               </div>
               
-              {/* List Thumbnail di Bawah (Sekarang menampilkan gambar produk) */}
               <div className="thumbnail-list">
                 {listGambar.map((img, i) => (
                   <div 
@@ -366,17 +373,25 @@ export default function ProductDetail() {
 
               <p className="description">
                 {produk.deskripsi ||
-                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
+                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit..."}
               </p>
 
               <div className="size-section">
                 <div className="size-label">Size</div>
                 <div className="size-options">
-                  {availableSizes.map((sz, idx) => (
-                    <div key={idx} className="size-box">
-                      {idx === 0 && produk.ukuran ? produk.ukuran : ""}
-                    </div>
-                  ))}
+                  {availableSizes.length > 0 ? (
+                    availableSizes.map((sz, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`size-box ${selectedSize === sz ? "active" : ""}`}
+                        onClick={() => setSelectedSize(sz)}
+                      >
+                        {sz}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>Tidak ada ukuran</span>
+                  )}
                 </div>
               </div>
 
@@ -404,7 +419,7 @@ export default function ProductDetail() {
                 </button>
 
                 <Link
-                  href={`/pembayaran?id=${produk.id}`}
+                  href={`/pembayaran?id=${produk.id}&ukuran=${selectedSize}`}
                   onClick={handleBeliSekarang}
                   style={{ flex: 1, textDecoration: "none" }}
                 >

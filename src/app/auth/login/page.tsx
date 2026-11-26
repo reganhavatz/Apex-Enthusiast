@@ -18,18 +18,15 @@ export default function Login() {
       const result = await res.json();
 
       if (result.status === "success") {
-        // AMBIL DATA LAMA (agar avatar, telepon, dll tidak hilang)
         const existingData = localStorage.getItem("user");
         let parsedExisting = existingData ? JSON.parse(existingData) : {};
 
-        // GABUNGKAN data lama dengan data login baru
         const updatedUser = {
           ...parsedExisting,
           username: form.username,
           level: result.level,
         };
 
-        // SIMPAN KEMBALI
         localStorage.setItem("user", JSON.stringify(updatedUser));
         window.dispatchEvent(new Event("storage_updated"));
 
@@ -105,7 +102,7 @@ export default function Login() {
           color: #475569;
         }
         .input-group input {
-          width: 100%;
+          width: 320px;
           padding: 10px 14px;
           background-color: #f8fafc;
           border: 1px solid #e2e8f0;

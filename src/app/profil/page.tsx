@@ -72,12 +72,10 @@ export default function ProfilePage() {
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Ambil data lama di localStorage agar data lain (seperti token/status login) tidak hilang
-        const existingData = localStorage.getItem("user");
-        let parsedExisting = existingData ? JSON.parse(existingData) : {};
 
-        // Gabungkan data lama dengan data inputan profil yang baru
+        const existingData = localStorage.getItem("user");
+        const parsedExisting = existingData ? JSON.parse(existingData) : {};
+
         const updatedProfile = {
             ...parsedExisting,
             username: user.username,
@@ -85,7 +83,7 @@ export default function ProfilePage() {
             telepon: user.telepon,
             jenisKelamin: user.jenisKelamin,
             tanggalLahir: user.tanggalLahir,
-            avatar: user.avatar, // Foto profil dipastikan ikut tersimpan secara permanen
+            avatar: user.avatar,
         };
 
         localStorage.setItem("user", JSON.stringify(updatedProfile));
@@ -94,50 +92,277 @@ export default function ProfilePage() {
     };
 
     return (
-        <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden", backgroundColor: "#eff6ff", fontFamily: "sans-serif" }}>
+        <div className="profile-layout">
+            <style>{`
+                .profile-layout {
+                    display: flex;
+                    min-height: 100vh;
+                    width: 100%;
+                    background-color: #eef3fb;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    color: #0f172a;
+                }
+
+                .profile-main {
+                    flex: 1;
+                    min-height: 100vh;
+                    overflow-y: auto;
+                    padding: 36px 40px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    box-sizing: border-box;
+                    margin-left:250px;
+                }
+
+                .profile-page-title {
+                    font-size: 26px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin: 0 0 24px 0;
+                    text-align: center;
+                }
+
+                .profile-card {
+                    width: 100%;
+                    max-width: 880px;
+                    background-color: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 32px 36px;
+                    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
+                    box-sizing: border-box;
+                }
+
+                .profile-section-title {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin: 0 0 24px 0;
+                    padding-bottom: 14px;
+                    border-bottom: 1px solid #f1f5f9;
+                }
+
+                .profile-grid {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 44px;
+                }
+
+                .profile-fields {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 18px;
+                }
+
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .form-label {
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #475569;
+                }
+
+                .form-control {
+                    width: 100%;
+                    padding: 11px 14px;
+                    font-size: 14px;
+                    color: #0f172a;
+                    background-color: #f8fafc;
+                    border: 1px solid #dbe3ef;
+                    border-radius: 8px;
+                    outline: none;
+                    box-sizing: border-box;
+                    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+                }
+
+                .form-control:hover {
+                    border-color: #cbd5e1;
+                }
+
+                .form-control:focus {
+                    background-color: #ffffff;
+                    border-color: #2563eb;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+                }
+
+                .avatar-panel {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 14px;
+                    min-width: 150px;
+                    padding: 20px 16px;
+                    background-color: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                }
+
+                .avatar-preview {
+                    width: 112px;
+                    height: 112px;
+                    background-color: #e2e8f0;
+                    border-radius: 50%;
+                    overflow: hidden;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 3px solid #ffffff;
+                    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+                }
+
+                .avatar-preview img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .avatar-placeholder {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #64748b;
+                }
+
+                .upload-btn {
+                    background-color: #ffffff;
+                    border: 1px solid #cbd5e1;
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    color: #1e293b;
+                    transition: background-color 0.15s ease, border-color 0.15s ease;
+                }
+
+                .upload-btn:hover {
+                    background-color: #eff6ff;
+                    border-color: #93c5fd;
+                    color: #1d4ed8;
+                }
+
+                .upload-input {
+                    display: none;
+                }
+
+                .form-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin-top: 28px;
+                    padding-top: 20px;
+                    border-top: 1px solid #f1f5f9;
+                }
+
+                .btn-save {
+                    background-color: #2563eb;
+                    color: #ffffff;
+                    border: none;
+                    padding: 10px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: background-color 0.15s ease, transform 0.1s ease;
+                }
+
+                .btn-save:hover {
+                    background-color: #1d4ed8;
+                }
+
+                .btn-save:active {
+                    transform: scale(0.99);
+                }
+
+                @media (max-width: 768px) {
+                    .profile-main {
+                        padding: 20px 16px;
+                    }
+
+                    .profile-card {
+                        padding: 22px 18px;
+                    }
+
+                    .profile-grid {
+                        flex-direction: column-reverse;
+                        align-items: center;
+                        gap: 24px;
+                    }
+
+                    .profile-fields {
+                        width: 100%;
+                    }
+
+                    .avatar-panel {
+                        width: 100%;
+                        box-sizing: border-box;
+                    }
+
+                    .form-footer {
+                        justify-content: stretch;
+                    }
+
+                    .btn-save {
+                        width: 100%;
+                    }
+                }
+            `}</style>
+
             <Sidebar />
-            <main style={{ flex: 1, height: "100vh", overflowY: "auto", padding: "40px", display: "flex", justifyContent: "center", alignItems: "flex-start", boxSizing: "border-box" }}>
-                <div style={{ width: "100%", maxWidth: "900px", backgroundColor: "#ffffff", borderRadius: "16px", padding: "40px", boxShadow: "0 4px 20px rgba(0,0,0,0.03)" }}>
-                    <h2 style={{ fontSize: "22px", fontWeight: "bold", color: "#0f172a", marginBottom: "32px" }}>Informasi Profil</h2>
+
+            <main className="profile-main">
+
+
+                <div className="profile-card">
+                    <h2 className="profile-section-title">Informasi Profil</h2>
 
                     <form onSubmit={handleSave}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "48px" }}>
-                            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "20px" }}>
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Nama</label>
+                        <div className="profile-grid">
+                            <div className="profile-fields">
+                                <div className="form-group">
+                                    <label htmlFor="username" className="form-label">Nama</label>
                                     <input
+                                        id="username"
                                         type="text"
-                                        style={{ width: "100%", padding: "12px 16px", fontSize: "14px", color: "#0f172a", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", outline: "none", boxSizing: "border-box" }}
+                                        className="form-control"
                                         value={user.username}
                                         onChange={(e) => setUser({ ...user, username: e.target.value })}
                                     />
                                 </div>
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Email</label>
+                                <div className="form-group">
+                                    <label htmlFor="email" className="form-label">Email</label>
                                     <input
+                                        id="email"
                                         type="email"
-                                        style={{ width: "100%", padding: "12px 16px", fontSize: "14px", color: "#0f172a", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", outline: "none", boxSizing: "border-box" }}
+                                        className="form-control"
                                         value={user.email}
                                         onChange={(e) => setUser({ ...user, email: e.target.value })}
                                     />
                                 </div>
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Nomor Telepon</label>
+                                <div className="form-group">
+                                    <label htmlFor="telepon" className="form-label">Nomor Telepon</label>
                                     <input
+                                        id="telepon"
                                         type="text"
                                         placeholder="Masukkan No Telepon"
-                                        style={{ width: "100%", padding: "12px 16px", fontSize: "14px", color: "#0f172a", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", outline: "none", boxSizing: "border-box" }}
+                                        className="form-control"
                                         value={user.telepon}
                                         onChange={(e) => setUser({ ...user, telepon: e.target.value })}
                                     />
                                 </div>
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Jenis Kelamin</label>
+                                <div className="form-group">
+                                    <label htmlFor="jenisKelamin" className="form-label">Jenis Kelamin</label>
                                     <select
-                                        style={{ width: "100%", padding: "12px 16px", fontSize: "14px", color: "#0f172a", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", outline: "none", boxSizing: "border-box" }}
+                                        id="jenisKelamin"
+                                        className="form-control"
                                         value={user.jenisKelamin}
                                         onChange={(e) => setUser({ ...user, jenisKelamin: e.target.value })}
                                     >
@@ -147,39 +372,40 @@ export default function ProfilePage() {
                                     </select>
                                 </div>
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569" }}>Tanggal Lahir</label>
+                                <div className="form-group">
+                                    <label htmlFor="tanggalLahir" className="form-label">Tanggal Lahir</label>
                                     <input
+                                        id="tanggalLahir"
                                         type="date"
-                                        style={{ width: "100%", padding: "12px 16px", fontSize: "14px", color: "#0f172a", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", outline: "none", boxSizing: "border-box" }}
+                                        className="form-control"
                                         value={user.tanggalLahir}
                                         onChange={(e) => setUser({ ...user, tanggalLahir: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", paddingTop: "8px", minWidth: "140px" }}>
-                                <div style={{ width: "120px", height: "120px", backgroundColor: "#e2e8f0", borderRadius: "50%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: "3px solid #f1f5f9" }}>
+                            <div className="avatar-panel">
+                                <div className="avatar-preview">
                                     {user.avatar ? (
-                                        <img src={user.avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                        <img src={user.avatar} alt="Avatar" />
                                     ) : (
-                                        <span style={{ fontSize: "13px", color: "#94a3b8", fontWeight: 500 }}>No Image</span>
+                                        <span className="avatar-placeholder">No Image</span>
                                     )}
                                 </div>
-                                <label style={{ backgroundColor: "#f1f5f9", border: "1px solid #cbd5e1", padding: "8px 20px", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer", color: "#334155" }}>
+                                <label className="upload-btn">
                                     Pilih Foto
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        style={{ display: "none" }}
+                                        className="upload-input"
                                         onChange={handleImageChange}
                                     />
                                 </label>
                             </div>
                         </div>
 
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "36px", borderTop: "1px solid #f1f5f9", paddingTop: "24px" }}>
-                            <button type="submit" style={{ backgroundColor: "#1d4ed8", color: "#ffffff", border: "none", padding: "12px 28px", borderRadius: "10px", fontWeight: "bold", fontSize: "14px", cursor: "pointer", boxShadow: "0 2px 8px rgba(29, 78, 216, 0.3)" }}>
+                        <div className="form-footer">
+                            <button type="submit" className="btn-save">
                                 Simpan Perubahan
                             </button>
                         </div>

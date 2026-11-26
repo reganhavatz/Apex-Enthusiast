@@ -47,6 +47,7 @@ export default function Sidebar() {
                     box-sizing: border-box;
                     border-right: 1px solid #e2e8f0;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    position:fixed;
                 }
 
                 .user-header {
@@ -153,7 +154,6 @@ export default function Sidebar() {
 
             <aside className="sidebar">
                 <div>
-                    {/* USER HEADER */}
                     <div className="user-header">
                         <div className="avatar-wrapper">
                             {user.avatar ? (
@@ -170,7 +170,6 @@ export default function Sidebar() {
                         </div>
                     </div>
 
-                    {/* MENU UTAMA */}
                     <nav className="nav-menu">
                         <Link
                             href="/profil"
@@ -179,23 +178,13 @@ export default function Sidebar() {
                             Profil
                         </Link>
 
-                         <Link
-                            href="/profil/keranjang"
-                            className={`nav-item ${pathname === "/profil/keranjang" ? "active" : ""}`}
-                        >
-                            Keranjang
-                        </Link>
-
                         <Link
                             href="/profil/riwayat"
                             className={`nav-item ${pathname === "/profil/riwayat" ? "active" : ""}`}
                         >
                             Riwayat Pesanan
                         </Link>
-
-                       
-
-                        
+ 
                     </nav>
                 </div>
 

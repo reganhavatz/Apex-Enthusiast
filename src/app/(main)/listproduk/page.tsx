@@ -1,463 +1,668 @@
 "use client";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-interface Produk {
+interface ProdukType {
   id: number;
   nama: string;
-  ukuran: string;
-  harga: number;
-  image: string;
   kategori: string;
+  harga: number;
+  ukuran: string;
+  stok: number;
+  image: string;
+}
+
+const SEPATU_KEYWORDS = [
+  "sepatu",
+  "sneakers",
+  "futsal",
+  "bola",
+  "lari",
+  "running",
+  "specs",
+  "ortuseight",
+];
+
+const APPAREL_KEYWORDS = [
+  "baju",
+  "kaos",
+  "kaus",
+  "jersey",
+  "kaos kaki",
+  "kaus kaki",
+  "sock",
+  "celana",
+  "hoodie",
+  "jaket",
+  "topi",
+  "tas",
+  "aksesoris",
+  "apparel",
+];
+
+function isProdukSepatu(nama: string, kategori: string): boolean {
+  const teks = `${nama} ${kategori}`.toLowerCase();
+  if (
+    teks.includes("kaos kaki") ||
+    teks.includes("kaus kaki") ||
+    teks.includes("baju") ||
+    teks.includes("kaos") ||
+    teks.includes("kaus") ||
+    teks.includes("jersey") ||
+    teks.includes("aksesoris") ||
+    teks.includes("apparel")
+  ) {
+    return false;
+  }
+  return SEPATU_KEYWORDS.some((k) => teks.includes(k));
+}
+
+function isProdukApparel(nama: string, kategori: string): boolean {
+  const teks = `${nama} ${kategori}`.toLowerCase();
+  if (isProdukSepatu(nama, kategori)) return false;
+  return APPAREL_KEYWORDS.some((k) => teks.includes(k));
 }
 
 export default function KatalogProduk() {
-  const [daftarProduk, setDaftarProduk] = useState<Produk[]>([]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [products, setProducts] = useState<ProdukType[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedJenis, setSelectedJenis] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string[]>([]);
   const [selectedUkuran, setSelectedUkuran] = useState<string[]>([]);
-  const [minHargaInput, setMinHargaInput] = useState("");
-  const [maksHargaInput, setMaksHargaInput] = useState("");
+  const [minHarga, setMinHarga] = useState("");
+  const [maxHarga, setMaxHarga] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [navKategori, setNavKategori] = useState("");
 
-  const searchParams = useSearchParams();
-  const kategoriAktif = searchParams.get("kategori") || "Semua";
+  const [appliedFilter, setAppliedFilter] = useState({
+    jenis: [] as string[],
+    brand: [] as string[],
+    ukuran: [] as string[],
+    minHarga: "",
+    maxHarga: "",
+    search: "",
+    navKategori: "",
+  });
 
   useEffect(() => {
-    const searchFromUrl = searchParams.get("search");
-    if (searchFromUrl) {
-      setSearchQuery(searchFromUrl);
-    }
-  }, [searchParams]);
+    const brandUrl = searchParams.get("brand") || "";
+    const searchUrl = searchParams.get("search") || "";
+    const kategoriUrl = (
+      searchParams.get("kategori") ||
+      searchParams.get("jenis") ||
+      searchParams.get("tab") ||
+      ""
+    )
+      .toLowerCase()
+      .trim();
 
-  useEffect(() => {
-    async function ambilData() {
+    const nextJenis =
+      kategoriUrl === "sepatu" || kategoriUrl === "sneakers"
+        ? ["Sepatu"]
+        : kategoriUrl === "apparel"
+        ? []
+        : kategoriUrl
+        ? [kategoriUrl]
+        : [];
+
+    const nextBrand = brandUrl ? [brandUrl] : [];
+
+    setSelectedJenis(nextJenis);
+    setSelectedBrand(nextBrand);
+    setSelectedUkuran([]);
+    setMinHarga("");
+    setMaxHarga("");
+    setSearchKeyword(searchUrl);
+    setNavKategori(kategoriUrl);
+
+    setAppliedFilter({
+      jenis: nextJenis,
+      brand: nextBrand,
+      ukuran: [],
+      minHarga: "",
+      maxHarga: "",
+      search: searchUrl,
+      navKategori: kategoriUrl,
+    });
+
+    async function fetchProducts() {
       try {
         const res = await fetch("http://localhost/api/get_produk.php", {
           cache: "no-store",
         });
-        const data = await res.json();
-        setDaftarProduk(data);
-      } catch (error) {
-        console.error("Gagal mengambil data dari backend PHP:", error);
+        if (res.ok) {
+          const data = await res.json();
+          const formattedData = Array.isArray(data)
+            ? data.map((item: any) => ({
+                ...item,
+                image: item.image
+                  ? item.image.startsWith("http")
+                    ? item.image
+                    : `http://localhost/api/uploads/${item.image}`
+                  : "https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=500&auto=format&fit=crop&q=60",
+              }))
+            : [];
+          setProducts(formattedData);
+        }
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
     }
 
-    ambilData();
-  }, []);
+    fetchProducts();
+  }, [searchParams]);
 
-  const handleJenisChange = (item: string) => {
-    setSelectedJenis((prev) =>
-      prev.includes(item) ? prev.filter((j) => j !== item) : [...prev, item]
-    );
-  };
-
-  const handleUkuranClick = (size: string) => {
-    setSelectedUkuran((prev) =>
-      prev.includes(size) ? prev.filter((u) => u !== size) : [...prev, size]
-    );
+  const handleTerapkanFilter = () => {
+    setAppliedFilter({
+      jenis: selectedJenis,
+      brand: selectedBrand,
+      ukuran: selectedUkuran,
+      minHarga,
+      maxHarga,
+      search: searchKeyword,
+      navKategori,
+    });
   };
 
   const handleResetFilter = () => {
     setSelectedJenis([]);
+    setSelectedBrand([]);
     setSelectedUkuran([]);
-    setMinHargaInput("");
-    setMaksHargaInput("");
-    setSearchQuery("");
+    setMinHarga("");
+    setMaxHarga("");
+    setSearchKeyword("");
+    setNavKategori("");
+
+    setAppliedFilter({
+      jenis: [],
+      brand: [],
+      ukuran: [],
+      minHarga: "",
+      maxHarga: "",
+      search: "",
+      navKategori: "",
+    });
   };
 
-  const produkFiltered = daftarProduk.filter((item) => {
-    const kategoriItem = item.kategori?.toLowerCase().trim() || "";
+  const filteredProducts = products.filter((p) => {
+    const namaProduk = p.nama?.toLowerCase() || "";
+    const kategoriProduk = p.kategori?.toLowerCase() || "";
+    const ukuranProduk = p.ukuran?.toLowerCase() || "";
+    const hargaProduk = Number(p.harga) || 0;
 
-    const matchKategoriURL =
-      kategoriAktif === "Semua" || !kategoriAktif
-        ? true
-        : kategoriItem === kategoriAktif.toLowerCase().trim();
+    if (appliedFilter.search) {
+      const keyword = appliedFilter.search.toLowerCase();
+      if (!namaProduk.includes(keyword) && !kategoriProduk.includes(keyword)) {
+        return false;
+      }
+    }
 
-    const matchSearch = item.nama.toLowerCase().includes(searchQuery.toLowerCase());
+    if (appliedFilter.navKategori === "sneakers" || appliedFilter.navKategori === "sepatu") {
+      if (!isProdukSepatu(namaProduk, kategoriProduk)) {
+        return false;
+      }
+    } else if (appliedFilter.navKategori === "apparel") {
+      if (!isProdukApparel(namaProduk, kategoriProduk)) {
+        return false;
+      }
+    }
 
-    const matchJenis =
-      selectedJenis.length === 0 ||
-      selectedJenis.some((j) => 
-        kategoriItem === j.toLowerCase().trim()
-      );
-
-    const matchUkuran =
-      selectedUkuran.length === 0 ||
-      selectedUkuran.some((u) => {
-        if (!item.ukuran) return false;
-        const daftarUkuranProduk = item.ukuran
-          .toString()
-          .toLowerCase()
-          .split(/[\s,/-]+/)
-          .map((val) => val.trim());
-
-        return daftarUkuranProduk.includes(u.toLowerCase().trim());
+    if (appliedFilter.jenis.length > 0) {
+      const matchJenis = appliedFilter.jenis.some((j) => {
+        const jLower = j.toLowerCase();
+        if (jLower === "sepatu" || jLower === "sneakers") {
+          return isProdukSepatu(namaProduk, kategoriProduk);
+        }
+        if (jLower === "apparel") {
+          return isProdukApparel(namaProduk, kategoriProduk);
+        }
+        return kategoriProduk.includes(jLower) || namaProduk.includes(jLower);
       });
+      if (!matchJenis) return false;
+    }
 
-    const minHargaVal = minHargaInput ? Number(minHargaInput) : 0;
-    const maksHargaVal = maksHargaInput ? Number(maksHargaInput) : Infinity;
-    const matchHarga = item.harga >= minHargaVal && item.harga <= maksHargaVal;
+    if (appliedFilter.brand.length > 0) {
+      const matchBrand = appliedFilter.brand.some(
+        (b) => namaProduk.includes(b.toLowerCase()) || kategoriProduk.includes(b.toLowerCase())
+      );
+      if (!matchBrand) return false;
+    }
 
-    return matchKategoriURL && matchSearch && matchJenis && matchUkuran && matchHarga;
+    if (appliedFilter.ukuran.length > 0 && appliedFilter.navKategori !== "apparel") {
+      const matchUkuran = appliedFilter.ukuran.some((u) => ukuranProduk.includes(u));
+      if (!matchUkuran) return false;
+    }
+
+    if (appliedFilter.minHarga && hargaProduk < Number(appliedFilter.minHarga)) return false;
+    if (appliedFilter.maxHarga && hargaProduk > Number(appliedFilter.maxHarga)) return false;
+
+    return true;
   });
 
   return (
-    <>
+    <div className="page-root">
       <style jsx>{`
-        .catalog-page {
-          min-height: 100vh;
-          background-color: #edf5ff;
-          padding-top: 70px;
-          padding-bottom: 60px;
-        }
-        .main-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 20px;
-        }
-        .top-search-section {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 32px;
-        }
-        .search-container {
-          display: flex;
-          gap: 8px;
+        .page-root {
           width: 100%;
-          max-width: 500px;
-        }
-        .search-input {
-          flex: 1;
-          height: 42px;
-          padding: 0 16px;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          outline: none;
-          font-size: 14px;
-          background: #ffffff;
-        }
-        .search-input:focus {
-          border-color: #000000;
-        }
-        .search-btn {
-          padding: 0 18px;
-          background: #ffffff;
-          border: 1px solid #d1d5db;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 16px;
+          min-height: 100vh;
+          background-color: #ffffff;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          color: #0f172a;
+          margin: 0;
+          padding: 0;
         }
 
-        .layout-grid {
+        .breadcrumb {
+          max-width: 1320px;
+          margin: 0 auto;
+          padding: 24px 32px 16px 32px;
+          font-size: 13px;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .main-layout {
+          max-width: 1320px;
+          margin: 0 auto;
+          padding: 0 32px 60px 32px;
           display: flex;
-          gap: 24px;
+          gap: 28px;
           align-items: flex-start;
         }
+
         .sidebar {
-          width: 220px;
+          width: 245px;
           flex-shrink: 0;
-        }
-        .filter-card {
           background: #ffffff;
-          padding: 20px;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+          padding: 20px 18px;
+          box-sizing: border-box;
         }
+
         .filter-title {
-          font-size: 13px;
-          font-weight: 700;
-          color: #111827;
-          margin-bottom: 12px;
-          margin-top: 16px;
-          text-align: center;
+          font-size: 12px;
+          font-weight: 900;
+          color: #0f172a;
+          margin-bottom: 10px;
+          letter-spacing: 0.5px;
         }
-        .filter-title:first-child {
-          margin-top: 0;
+
+        .filter-title:not(:first-child) {
+          margin-top: 22px;
         }
-        .checkbox-group {
-          margin-bottom: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
+
         .checkbox-label {
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          color: #374151;
+          color: #334155;
+          margin-bottom: 8px;
           cursor: pointer;
+          font-weight: 400;
         }
-        .checkbox-input {
+
+        .checkbox-label input {
           width: 15px;
           height: 15px;
+          accent-color: #0f172a;
           cursor: pointer;
+          border-radius: 4px;
+          margin: 0;
         }
+
         .size-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           gap: 6px;
-          margin-bottom: 20px;
         }
-        .size-item {
-          height: 32px;
-          background: #e5e7eb;
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+
+        .size-box {
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          text-align: center;
+          padding: 6px 0;
           font-size: 11px;
-          font-weight: 500;
-          color: #374151;
+          font-weight: 700;
           cursor: pointer;
-          border: 1px solid transparent;
+          background: #ffffff;
+          color: #334155;
           transition: all 0.2s;
         }
-        .size-item.active {
-          background: #000000;
+
+        .size-box:hover,
+        .size-box.active {
+          border-color: #0f172a;
+          background-color: #0f172a;
           color: #ffffff;
-          font-weight: 700;
         }
-        .harga-container {
+
+        .price-inputs {
           display: flex;
           align-items: center;
           gap: 6px;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
-        .input-harga {
+
+        .price-inputs input {
           width: 100%;
-          height: 32px;
-          padding: 0 6px;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          font-size: 11px;
+          padding: 7px 8px;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          font-size: 12px;
           outline: none;
-          text-align: center;
+          color: #0f172a;
+          box-sizing: border-box;
         }
-        .btn-gunakan {
-          width: 100%;
-          background: #1642d7;
+
+        .filter-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        .btn-apply {
+          flex: 1;
+          background-color: #0f172a;
           color: #ffffff;
-          padding: 8px 0;
           border: none;
           border-radius: 6px;
-          font-weight: 600;
+          height: 30px;
           font-size: 12px;
+          font-weight: 600;
           cursor: pointer;
+          transition: opacity 0.2s;
+        }
+
+        .btn-apply:hover {
+          opacity: 0.88;
+        }
+
+        .btn-reset {
+          background-color: #f8fafc;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          height: 30px;
+          padding: 0 10px;
+          font-size: 12px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        .btn-reset:hover {
+          background-color: #f1f5f9;
         }
 
         .content-area {
           flex: 1;
-          min-width: 0; /* Mencegah flex child keluar dari kontainer */
+          min-width: 0;
         }
+
         .product-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
+          gap: 20px;
         }
+
         .product-card {
           background: #ffffff;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-          cursor: pointer;
-          padding: 12px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
-          height: 320px;
           box-sizing: border-box;
-          min-width: 0; /* Penting agar flex item tidak merusak grid/card */
+          text-decoration: none;
+          color: inherit;
+          transition: transform 0.2s, box-shadow 0.2s;
         }
+
         .product-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+          transform: translateY(-3px);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
         }
-        .card-header {
-          display: flex;
-          justify-content: flex-start;
-        }
-        .badge-stock {
-          background: #dcfce7;
-          color: #16a34a;
-          font-size: 9px;
-          font-weight: 700;
-          padding: 4px 6px;
-          border-radius: 4px;
-        }
+
         .card-img-container {
+          width: 100%;
           height: 120px;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 8px 0;
+          margin-bottom: 12px;
+          background: #f8fafc;
+          border-radius: 8px;
+          padding: 8px;
+          box-sizing: border-box;
         }
+
         .card-img-container img {
           max-width: 100%;
           max-height: 100%;
           object-fit: contain;
         }
+
         .card-body {
           display: flex;
           flex-direction: column;
           gap: 4px;
-          min-width: 0; /* Penting untuk menangani teks panjang di dalam flex */
+          margin-bottom: 12px;
         }
+
         .brand-name {
-          font-size: 12px;
-          font-weight: 700;
-          color: #1f2937;
-          text-transform: uppercase;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 100%; /* Ditambahkan agar ellipsis berfungsi optimal */
-          display: block;  /* Ditambahkan agar block-level membatasi lebar */
-          margin: 0;
-        }
-        .size-info {
           font-size: 11px;
-          color: #6b7280;
+          font-weight: 800;
+          color: #64748b;
+          text-transform: uppercase;
+          margin: 0;
+          letter-spacing: 0.5px;
         }
-        .product-price {
+
+        .product-title {
           font-size: 13px;
-          font-weight: 700;
-          color: #111827;
-          margin-top: 4px;
-          margin-bottom: 8px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0;
+          line-height: 1.3;
+          height: 34px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
+
+        .stock-info {
+          font-size: 11px;
+          color: #64748b;
+          margin-bottom: -20px;
+        }
+
+        .card-footer {
+          margin-top: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .product-price {
+          font-size: 15px;
+          font-weight: 600;
+          color: #0f172a;
+        }
+
         .btn-buy {
           width: 100%;
-          background-color: #1642d7;
+          background-color: #000000;
           color: #ffffff;
           border: none;
-          padding: 8px 0;
+          padding: 5px 0;
           border-radius: 6px;
-          font-weight: 700;
           font-size: 11px;
+          font-weight: 500;
           cursor: pointer;
-        }
-        .no-product-msg {
-          background: #ffffff;
-          padding: 40px;
-          border-radius: 12px;
           text-align: center;
-          color: #6b7280;
-          font-size: 14px;
+          letter-spacing: 0.5px;
+          transition: opacity 0.2s;
+          height: 28px;
+        }
+
+        .btn-buy:hover {
+          opacity: 0.85;
+        }
+
+        .empty-state {
+          grid-column: span 4;
+          text-align: center;
+          padding: 40px;
+          font-size: 13px;
+          color: #64748b;
+          background: #f8fafc;
+          border: 1px dashed #cbd5e1;
+          border-radius: 8px;
+        }
+
+        @media (max-width: 1024px) {
+          .product-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .main-layout {
+            flex-direction: column;
+          }
+          .sidebar {
+            width: 100%;
+          }
+          .empty-state {
+            grid-column: span 2;
+          }
         }
       `}</style>
 
-      <div className="catalog-page">
-        <main className="main-content">
-          {/* SEARCH BAR BARIS ATAS */}
-          <div className="top-search-section">
-            <div className="search-container">
-              <input 
-                type="text" 
-                placeholder="Search" 
-                className="search-input"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button className="search-btn">🔍</button>
-            </div>
+      <div className="breadcrumb">
+        Beranda &gt; Katalog Produk
+        {appliedFilter.navKategori && ` > ${appliedFilter.navKategori.toUpperCase()}`}
+        {appliedFilter.search && ` > Pencarian: "${appliedFilter.search}"`}
+      </div>
+
+      <div className="main-layout">
+        <aside className="sidebar">
+          <div className="filter-title">JENIS</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            {["Sepatu", "Aksesoris", "Jersey", "Kaos Kaki"].map((item) => (
+              <label key={item} className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedJenis.includes(item)}
+                  onChange={() => {
+                    setSelectedJenis((prev) =>
+                      prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]
+                    );
+                  }}
+                />
+                {item}
+              </label>
+            ))}
           </div>
 
-          <div className="layout-grid">
-            {/* SIDEBAR FILTER */}
-            <aside className="sidebar">
-              <div className="filter-card">
-                <h2 className="filter-title">JENIS</h2>
-                <div className="checkbox-group">
-                  {['PRIA', 'WANITA', 'ANAK'].map((item) => (
-                    <label key={item} className="checkbox-label">
-                      <input 
-                        type="checkbox" 
-                        className="checkbox-input" 
-                        checked={selectedJenis.includes(item)}
-                        onChange={() => handleJenisChange(item)}
-                      /> {item}
-                    </label>
-                  ))}
-                </div>
-                
-                <h2 className="filter-title">UKURAN</h2>
-                <div className="size-grid">
-                  {['39', '40', '41', '42', '43', '44', '45', '46'].map((size) => (
-                    <div 
-                      key={size} 
-                      className={`size-item ${selectedUkuran.includes(size) ? 'active' : ''}`}
-                      onClick={() => handleUkuranClick(size)}
-                    >
-                      {size}
-                    </div>
-                  ))}
-                </div>
+          <div className="filter-title">BRAND</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            {["Nike", "Adidas", "New Balance", "Puma", "Ortuseight"].map((brand) => (
+              <label key={brand} className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedBrand.includes(brand)}
+                  onChange={() => {
+                    setSelectedBrand((prev) =>
+                      prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]
+                    );
+                  }}
+                />
+                {brand}
+              </label>
+            ))}
+          </div>
 
-                <h2 className="filter-title">Harga</h2>
-                <div className="harga-container">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    className="input-harga"
-                    value={minHargaInput}
-                    onChange={(e) => setMinHargaInput(e.target.value)}
-                  />
-                  <span>-</span>
-                  <input
-                    type="number"
-                    placeholder="Maks"
-                    className="input-harga"
-                    value={maksHargaInput}
-                    onChange={(e) => setMaksHargaInput(e.target.value)}
-                  />
-                </div>
-
-                <button className="btn-gunakan" onClick={handleResetFilter}>
-                  Reset Filter
-                </button>
+          <div className="filter-title">UKURAN</div>
+          <div className="size-grid">
+            {["30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42"].map((size) => (
+              <div
+                key={size}
+                className={`size-box ${selectedUkuran.includes(size) ? "active" : ""}`}
+                onClick={() => {
+                  setSelectedUkuran((prev) =>
+                    prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+                  );
+                }}
+              >
+                {size}
               </div>
-            </aside>
+            ))}
+          </div>
 
-            <div className="content-area">
-              {loading ? (
-                <div className="no-product-msg">Memuat data produk...</div>
-              ) : produkFiltered.length === 0 ? (
-                <div className="no-product-msg">
-                  Belum ada produk yang sesuai dengan filter atau pencarian Anda.
+          <div className="filter-title">HARGA</div>
+          <div className="price-inputs">
+            <input
+              type="number"
+              placeholder="Min"
+              value={minHarga}
+              onChange={(e) => setMinHarga(e.target.value)}
+            />
+            <span>-</span>
+            <input
+              type="number"
+              placeholder="Max"
+              value={maxHarga}
+              onChange={(e) => setMaxHarga(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-actions">
+            <button type="button" className="btn-apply" onClick={handleTerapkanFilter}>
+              Terapkan
+            </button>
+            <button type="button" className="btn-reset" onClick={handleResetFilter}>
+              Reset
+            </button>
+          </div>
+        </aside>
+
+        <main className="content-area">
+          <div className="product-grid">
+            {loading ? (
+              <div className="empty-state">Memuat data produk...</div>
+            ) : filteredProducts.length > 0 ? (
+              filteredProducts.map((p) => (
+                <div key={p.id} className="product-card">
+                  <div className="card-img-container">
+                    <img src={p.image} alt={p.nama} />
+                  </div>
+
+                  <div className="card-body">
+                    <span className="brand-name">{p.kategori || "SEPATU"}</span>
+                    <h3 className="product-title">{p.nama}</h3>
+                    <p className="stock-info">Stok : {p.stok ?? "-"}</p>
+                  </div>
+
+                  <div className="card-footer">
+                    <div className="product-price">Rp {Number(p.harga).toLocaleString("id-ID")}</div>
+                    <button className="btn-buy" onClick={() => router.push(`/checkout/${p.id}`)}>
+                      BELI SEKARANG
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <section className="product-grid">
-                  {produkFiltered.map((item) => (
-                    <Link href={`/checkout/${item.id}`} key={item.id} style={{ textDecoration: 'none', minWidth: 0 }}>
-                      <div className="product-card">
-                        <div className="card-header">
-                          <span className="badge-stock">READY STOK</span>
-                        </div>
-                        <div className="card-img-container">
-                          <img src={`http://localhost/api/uploads/${item.image}`} alt={item.nama} />
-                        </div>
-                        <div className="card-body">
-                          <h2 className="brand-name" title={item.nama}>{item.nama}</h2>
-                          <p className="size-info">Ready Size : {item.ukuran}</p>
-                          <div className="product-price">
-                            Rp {Number(item.harga).toLocaleString("id-ID")}
-                          </div>
-                        </div>
-                        <button className="btn-buy">BELI SEKARANG</button>
-                      </div>
-                    </Link>
-                  ))}
-                </section>
-              )}
-            </div>
+              ))
+            ) : (
+              <div className="empty-state">Produk tidak ditemukan</div>
+            )}
           </div>
         </main>
       </div>
-    </>
+    </div>
   );
 }

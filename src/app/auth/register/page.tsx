@@ -19,10 +19,8 @@ export default function Register() {
         body: JSON.stringify(form),
       });
 
-      // 1. Ambil respon sebagai text dulu
       const text = await res.text();
 
-      // 2. Parse manual ke JSON
       try {
         const result = JSON.parse(text);
         if (result.status === "success") {
@@ -32,7 +30,6 @@ export default function Register() {
           alert("Gagal daftar: " + result.message);
         }
       } catch (jsonError) {
-        // Jika PHP masih kirim HTML/Error, tampilkan teks aslinya di console
         console.error("Respon dari PHP bukan JSON:", text);
         alert("Terjadi kesalahan pada server PHP. Cek Console Browser (F12) untuk melihat pesan detailnya.");
       }
@@ -100,7 +97,7 @@ export default function Register() {
           color: #475569;
         }
         .input-group input {
-          width: 100%;
+          width: 320px;
           padding: 10px 14px;
           background-color: #f8fafc;
           border: 1px solid #e2e8f0;

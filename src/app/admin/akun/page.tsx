@@ -70,6 +70,8 @@ export default function KelolaAkunPage() {
           min-height: 100vh;
           font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
           margin-top:-50px;
+          margin-left:270px;
+          width:1005px;
         }
 
         .main-content {
